@@ -2,19 +2,26 @@ import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
 
 interface ApiStackProps extends cdk.StackProps {
   userPool: cognito.UserPool;
+  listRooms: lambda.IFunction;
+  createRoom: lambda.IFunction;
+  updateRoom: lambda.IFunction;
+  deleteRoom: lambda.IFunction;
+  listReservations: lambda.IFunction;
+  createReservation: lambda.IFunction;
+  updateReservation: lambda.IFunction;
+  cancelReservation: lambda.IFunction;
 }
 
 export class ApiStack extends cdk.Stack {
-  public readonly api: apigateway.RestApi;
-
   constructor(scope: Construct, id: string, props: ApiStackProps) {
     super(scope, id, props);
 
     // REST APIの作成
-    this.api = new apigateway.RestApi(this, 'FacilityBookingApi', {
+    const api = new apigateway.RestApi(this, 'FacilityBookingApi', {
       restApiName: 'FacilityBookingApi',
       description: '施設・会議室予約管理システムAPI',
       defaultCorsPreflightOptions: {
@@ -34,75 +41,38 @@ export class ApiStack extends cdk.Stack {
       }
     );
 
-    // 認証が必要なメソッドのデフォルト設定
     const authMethodOptions: apigateway.MethodOptions = {
       authorizer,
       authorizationType: apigateway.AuthorizationType.COGNITO,
     };
 
     // /rooms エンドポイント
-    const rooms = this.api.root.addResource('rooms');
-    rooms.addMethod('GET', new apigateway.MockIntegration({
-      integrationResponses: [{ statusCode: '200' }],
-      passthroughBehavior: apigateway.PassthroughBehavior.NEVER,
-      requestTemplates: { 'application/json': '{"statusCode": 200}' },
-    }), authMethodOptions);
-    rooms.addMethod('POST', new apigateway.MockIntegration({
-      integrationResponses: [{ statusCode: '200' }],
-      passthroughBehavior: apigateway.PassthroughBehavior.NEVER,
-      requestTemplates: { 'application/json': '{"statusCode": 200}' },
-    }), authMethodOptions);
+    const rooms = api.root.addResource('rooms');
+    rooms.addMethod('GET', new apigateway.LambdaIntegration(props.listRooms), authMethodOptions);
+    rooms.addMethod('POST', new apigateway.LambdaIntegration(props.createRoom), authMethodOptions);
 
     // /rooms/{roomId} エンドポイント
     const room = rooms.addResource('{roomId}');
-    room.addMethod('PUT', new apigateway.MockIntegration({
-      integrationResponses: [{ statusCode: '200' }],
-      passthroughBehavior: apigateway.PassthroughBehavior.NEVER,
-      requestTemplates: { 'application/json': '{"statusCode": 200}' },
-    }), authMethodOptions);
-    room.addMethod('DELETE', new apigateway.MockIntegration({
-      integrationResponses: [{ statusCode: '200' }],
-      passthroughBehavior: apigateway.PassthroughBehavior.NEVER,
-      requestTemplates: { 'application/json': '{"statusCode": 200}' },
-    }), authMethodOptions);
+    room.addMethod('PUT', new apigateway.LambdaIntegration(props.updateRoom), authMethodOptions);
+    room.addMethod('DELETE', new apigateway.LambdaIntegration(props.deleteRoom), authMethodOptions);
 
     // /rooms/{roomId}/availability エンドポイント
     const availability = room.addResource('availability');
-    availability.addMethod('GET', new apigateway.MockIntegration({
-      integrationResponses: [{ statusCode: '200' }],
-      passthroughBehavior: apigateway.PassthroughBehavior.NEVER,
-      requestTemplates: { 'application/json': '{"statusCode": 200}' },
-    }), authMethodOptions);
+    availability.addMethod('GET', new apigateway.LambdaIntegration(props.listRooms), authMethodOptions);
 
     // /reservations エンドポイント
-    const reservations = this.api.root.addResource('reservations');
-    reservations.addMethod('GET', new apigateway.MockIntegration({
-      integrationResponses: [{ statusCode: '200' }],
-      passthroughBehavior: apigateway.PassthroughBehavior.NEVER,
-      requestTemplates: { 'application/json': '{"statusCode": 200}' },
-    }), authMethodOptions);
-    reservations.addMethod('POST', new apigateway.MockIntegration({
-      integrationResponses: [{ statusCode: '200' }],
-      passthroughBehavior: apigateway.PassthroughBehavior.NEVER,
-      requestTemplates: { 'application/json': '{"statusCode": 200}' },
-    }), authMethodOptions);
+    const reservations = api.root.addResource('reservations');
+    reservations.addMethod('GET', new apigateway.LambdaIntegration(props.listReservations), authMethodOptions);
+    reservations.addMethod('POST', new apigateway.LambdaIntegration(props.createReservation), authMethodOptions);
 
     // /reservations/{reservationId} エンドポイント
     const reservation = reservations.addResource('{reservationId}');
-    reservation.addMethod('PUT', new apigateway.MockIntegration({
-      integrationResponses: [{ statusCode: '200' }],
-      passthroughBehavior: apigateway.PassthroughBehavior.NEVER,
-      requestTemplates: { 'application/json': '{"statusCode": 200}' },
-    }), authMethodOptions);
-    reservation.addMethod('DELETE', new apigateway.MockIntegration({
-      integrationResponses: [{ statusCode: '200' }],
-      passthroughBehavior: apigateway.PassthroughBehavior.NEVER,
-      requestTemplates: { 'application/json': '{"statusCode": 200}' },
-    }), authMethodOptions);
+    reservation.addMethod('PUT', new apigateway.LambdaIntegration(props.updateReservation), authMethodOptions);
+    reservation.addMethod('DELETE', new apigateway.LambdaIntegration(props.cancelReservation), authMethodOptions);
 
     // APIのURLを出力
     new cdk.CfnOutput(this, 'ApiUrl', {
-      value: this.api.url,
+      value: api.url,
       description: 'API Gateway URL',
     });
   }
