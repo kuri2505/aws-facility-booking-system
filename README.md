@@ -184,3 +184,74 @@ cdk deploy --all
 ## 📄 License
 
 MIT
+
+## ✅ 動作確認済みエンドポイント
+
+### 認証
+```bash
+TOKEN=$(aws cognito-idp initiate-auth \
+  --auth-flow USER_PASSWORD_AUTH \
+  --auth-parameters USERNAME=your@email.com,PASSWORD="yourpassword" \
+  --client-id YOUR_CLIENT_ID \
+  --query 'AuthenticationResult.IdToken' \
+  --output text)
+```
+
+### 会議室作成
+```bash
+curl -X POST \
+  https://YOUR_API_URL/prod/rooms \
+  -H "Authorization: $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "第1会議室",
+    "capacity": 10,
+    "location": "3F",
+    "facilities": ["プロジェクター", "ホワイトボード"]
+  }'
+```
+
+### 会議室一覧取得
+```bash
+curl -X GET https://YOUR_API_URL/prod/rooms \
+  -H "Authorization: $TOKEN"
+```
+
+### 予約作成
+```bash
+curl -X POST \
+  https://YOUR_API_URL/prod/reservations \
+  -H "Authorization: $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "roomId": "room-xxx",
+    "date": "2026-02-23",
+    "startTime": "10:00",
+    "endTime": "11:00"
+  }'
+```
+
+### 予約一覧取得
+```bash
+curl -X GET https://YOUR_API_URL/prod/reservations \
+  -H "Authorization: $TOKEN"
+```
+
+## 🔒 Security
+
+- 全APIエンドポイントはCognitoによる認証が必須
+- 管理者操作（会議室の作成・編集・削除）はAdminsグループのみ実行可能
+- LambdaのDynamoDBアクセスは最小権限のIAMロールで管理
+- アクセスキーはコードに含めずIAMロールで認証
+
+## 📌 Deployment
+```bash
+# CDKブートストラップ（初回のみ）
+cdk bootstrap
+
+# 全スタックをデプロイ
+cdk deploy --all
+
+# スタックの削除
+cdk destroy --all
+```
