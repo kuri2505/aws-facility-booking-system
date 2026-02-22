@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 import * as cdk from 'aws-cdk-lib';
 import { DynamoDbStack } from '../lib/dynamodb-stack';
+import { CognitoStack } from '../lib/cognito-stack';
 
 const app = new cdk.App();
 
-new DynamoDbStack(app, 'DynamoDbStack', {
-  env: {
-    account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: process.env.CDK_DEFAULT_REGION,
-  },
-});
+const env = {
+  account: process.env.CDK_DEFAULT_ACCOUNT,
+  region: process.env.CDK_DEFAULT_REGION,
+};
+
+new DynamoDbStack(app, 'DynamoDbStack', { env });
+new CognitoStack(app, 'CognitoStack', { env });
